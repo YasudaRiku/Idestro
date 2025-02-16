@@ -1,0 +1,105 @@
+﻿<h3>DownloadLib</h3>
+
+@page "/downloadlib"
+@using Idestro.Shared.Models
+@using System.Text.Json
+@using System.Timers;
+@inject HttpClient client
+@inject IJSRuntime JSRuntime
+
+
+@if (convertFiles == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <MatTable Items="@convertFiles" class="mat-elevation-z5" Striped="true" UseSortHeaderRow="true" PageSize="50">
+        <MatTableHeader>
+            <MatSortHeaderRow>
+                <MatSortHeader SortId="UploadDtm"><span style="width:160px">アップロード日時</span></MatSortHeader>
+                <MatSortHeader SortId="ProjectDesc"><span style="width:80px">顧客名</span></MatSortHeader>
+                <MatSortHeader SortId="JobDesc"><span style="width:80px">業務名</span></MatSortHeader>
+                <MatSortHeader SortId="FmtNo">FMT</MatSortHeader>
+                <MatSortHeader SortId="FileDesc">ファイル名</MatSortHeader>
+                <MatSortHeader SortId="Status">状態</MatSortHeader>
+            </MatSortHeaderRow>
+        </MatTableHeader>
+        <MatTableRow>
+            <td>@context.UploadDtm</td>
+            <td>@context.ProjectDesc</td>
+            <td>@context.JobDesc</td>
+            <td>@context.FmtNo</td>
+            <td>@context.FileDesc</td>
+            @if (@context.Status == 0)
+            {
+                <td>
+                    <div id="loading">
+                        <div class="w-100 d-flex justify-content-center align-items-center">
+                            <div class="spinner-border text-primary spinner-custom" role="status"></div>
+                        </div>
+                    </div>
+                </td>
+            }
+            else
+            {
+                <td><MatButton Icon="save_alt" Raised="true" OnClick="() => Click(context)">Download</MatButton></td>
+            }
+        </MatTableRow>
+    </MatTable>
+    @value
+}
+
+
+@code {
+     private List<ConvertFile>? convertFiles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        convertFiles = await client.GetFromJsonAsync<List<ConvertFile>>("api/ConvertFiles");
+        SetTimer();
+    }
+
+    #region DB監視タイマー処理
+    //タイマー設定時刻（３０分）
+    public static TimeSpan TimerTime = new TimeSpan(0, 30, 0);
+
+    //Timerオブジェクト（タイマー処理）
+    private System.Timers.Timer? _timer;
+
+    //5秒（減算用）
+    public static TimeSpan onesec = new TimeSpan(0, 0, 5);
+
+    private void SetTimer()
+    {
+        _timer = new System.Timers.Timer(5000);
+        _timer.Elapsed += OnTimedEvent;
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+    }
+
+    private async void OnTimedEvent(Object? source, ElapsedEventArgs e)
+    {
+        TimerTime = TimerTime.Subtract(onesec);
+        convertFiles = await client.GetFromJsonAsync<List<ConvertFile>>("api/ConvertFiles");
+        StateHasChanged();
+    }
+    #endregion DB監視タイマー処理
+
+    string value = "";
+    async Task Click(ConvertFile _convertFile)
+    {
+        try
+        {
+            var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/FileDownload.js");
+            string url = $@"http://192.168.215.28:8080/net6/unixlib/{_convertFile.ProjectDesc}/{_convertFile.JobDesc}/{_convertFile.FmtNo}/{_convertFile.FileDesc}";
+            await module.InvokeVoidAsync("downloadFileFromStream", url, _convertFile.FileDesc);
+        }
+        catch (Exception ex)
+        {
+            value = ex.ToString();
+        }
+    }
+
+
+}

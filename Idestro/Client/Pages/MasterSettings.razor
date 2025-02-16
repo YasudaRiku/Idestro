@@ -1,0 +1,383 @@
+﻿<h3>MasterSettings</h3>
+
+@page "/mastersettings"
+@using Idestro.Shared.Models
+@using System.Text.Json;
+@using System.Timers;
+@using System.Text;
+@inject HttpClient client;
+@inject IJSRuntime JSRuntime;
+
+マスターの登録を行います！
+
+
+<MatTabGroup @bind-ActiveIndex="@tabIndex">
+    <!--プロジェクトタブ-->
+    <MatTab Label="Company" >
+        <MatDivider></MatDivider>
+        会社名や案件名を登録します
+        
+        <p><MatTextField @bind-Value="@newProjectDescValue" Label="会社名"></MatTextField></p>
+        <p><MatTextField @bind-Value="@newCommentValue" Label="コメント" TextArea="true" FullWidth="true"></MatTextField></p>
+        <p>
+            <MatButton icon="note_add" Label="登録" Raised="true" OnClick="@OpenProjectDialog"></MatButton>
+            <MatDialog @bind-IsOpen="@projectDialogIsOpen">
+                <MatDialogTitle>Company登録</MatDialogTitle>
+                @if(string.IsNullOrEmpty(newProjectDescValue))
+                {
+                    <MatDialogContent>
+                        会社名が入力されていません。
+                    </MatDialogContent>
+                    <MatDialogActions>
+                        <MatButton OnClick="@(e => { projectDialogIsOpen = false; })">OK</MatButton>
+                    </MatDialogActions>
+                }
+                else
+                {
+                    <MatDialogContent>
+                        <p>会社名：@newProjectDescValue</p>
+                        <p>コメント：@newCommentValue</p>
+                    </MatDialogContent>
+                    <MatDialogActions>
+                        <MatButton OnClick="() => ClickRegisterProject(newProjectDescValue, newCommentValue)">OK</MatButton>
+                        <MatButton OnClick="@(e => { projectDialogIsOpen = false; })">キャンセル</MatButton>
+                    </MatDialogActions>
+                }
+            </MatDialog>
+        </p>
+
+        <MatDivider></MatDivider>
+        <p>
+        <h4>プロジェクト一覧</h4>
+        </p>
+        @if (projectMst == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <MatTable Items="@projectMst" class="mat-elevation-z5" Striped="true" UseSortHeaderRow="true" PageSize="50">
+                <MatTableHeader>
+                    <MatSortHeaderRow>
+                        <MatSortHeader SortId="ProjectDesc"><span style="width:120px">顧客名</span></MatSortHeader>
+                        <MatSortHeader SortId="Comment"><span style="width:160px">コメント</span></MatSortHeader>
+                        <MatSortHeader SortId="Status">削除</MatSortHeader>
+                    </MatSortHeaderRow>
+                </MatTableHeader>
+                <MatTableRow>
+                    <td>@context.ProjectDesc</td>
+                    <td>@context.Comment</td>
+                    <td>
+                        <MatButton Icon="delete" OnClick="() => ClickProjectDelete(context.ProjectDesc)"></MatButton>
+                    </td>
+                </MatTableRow>
+            </MatTable>
+        }
+        
+    </MatTab>
+    <!--JOBタブ-->
+    <MatTab Label="Job">
+        <MatDivider></MatDivider>
+        <p>JOB名を登録します</p>
+        <MatSelect Label="Company" Outlined="true" TValue="string" @bind-Value="@projectValue">
+            @foreach (var pl in projectList)
+            {
+                <MatOptionString Value="@pl">@pl</MatOptionString>
+            }
+        </MatSelect>
+
+        <p><MatTextField @bind-Value="@newJobDescValue" Label="JOB名"></MatTextField></p>
+        <p>
+            <MatButton icon="note_add" Label="登録" Raised="true" OnClick="@OpenJobDialog"></MatButton>
+            <MatDialog @bind-IsOpen="@jobDialogIsOpen">
+                <MatDialogTitle>JOB登録</MatDialogTitle>
+                @if (string.IsNullOrEmpty(newJobDescValue))
+                {
+                    <MatDialogContent>
+                        JOB名が入力されていません。
+                    </MatDialogContent>
+                    <MatDialogActions>
+                        <MatButton OnClick="@(e => { jobDialogIsOpen = false; })">OK</MatButton>
+                    </MatDialogActions>
+                }
+                else
+                {
+                    <MatDialogContent>
+                        <p>会社名：@projectValue</p>
+                        <p>JOB名：@newJobDescValue</p>
+                    </MatDialogContent>
+                    <MatDialogActions>
+                        <MatButton OnClick="() => ClickRegisterJob(projectValue, newJobDescValue)">OK</MatButton>
+                        <MatButton OnClick="@(e => { jobDialogIsOpen = false; })">キャンセル</MatButton>
+                    </MatDialogActions>
+                }
+            </MatDialog>
+        </p>
+
+        <MatDivider></MatDivider>
+        <p>
+            <h4>JOB一覧</h4>
+        </p>
+        @if (jobMst == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <MatTable Items="@jobMst" class="mat-elevation-z5" Striped="true" UseSortHeaderRow="true" PageSize="50">
+                <MatTableHeader>
+                    <MatSortHeaderRow>
+                        <MatSortHeader SortId="ProjectDesc"><span style="width:120px">顧客名</span></MatSortHeader>
+                        <MatSortHeader SortId="JobDesc"><span style="width:160px">JOB名</span></MatSortHeader>
+                        <MatSortHeader SortId="Status">削除</MatSortHeader>
+                    </MatSortHeaderRow>
+                </MatTableHeader>
+                <MatTableRow>
+                    <td>@context.ProjectDesc</td>
+                    <td>@context.JobDesc</td>
+                    <td>
+                        <MatButton Icon="delete" OnClick="() => ClickJobDelete(context.ProjectDesc, context.JobDesc)"></MatButton>
+                    </td>
+                </MatTableRow>
+            </MatTable>
+        }
+
+
+    </MatTab>
+    <!--フィールドタブ-->
+    <MatTab Label="FIELD">
+        <MatDivider></MatDivider>
+        <p>IDESフィールド名とENTREXフィールド番号情報を取込します</p>
+        <MatSelect Label="Company" Outlined="true" TValue="string" @bind-Value="@projectValue">
+            @foreach (var pl in projectList)
+            {
+                <MatOptionString Value="@pl">@pl</MatOptionString>
+            }
+        </MatSelect>
+        <MatSelect Label="Job" Outlined="true" TValue="string" @bind-Value="@jobValue">
+            <MatOptionString Value=""></MatOptionString>
+            @if (projectValue != "")
+            {
+                jobList.Clear();
+                foreach (var jm in jobMst.Where(x => x.ProjectDesc == projectValue))
+                {
+                    if (jm.ProjectDesc == projectValue)
+                    {
+                        jobList.Add(jm.JobDesc);
+                    }
+                }
+            }
+            @foreach (var jl in jobList)
+            {
+                <MatOptionString Value="@jl">@jl</MatOptionString>
+            }
+        </MatSelect>
+        <MatSelect Label="FMT" Outlined="true" TValue="string" @bind-Value="@fmtValue">
+            @foreach (string i in fmtList)
+            {
+                <MatOptionString Value="@i">@i</MatOptionString>
+            }
+        </MatSelect>
+
+        <MatH5>ファイル形式</MatH5>
+        <MatRadioGroup @bind-Value="@fileTypeValue" TValue="string">
+            <MatRadioButton Value="@("0")" TValue="string">レコードフォーマットから　</MatRadioButton>
+            <MatTooltip Tooltip="現在選択できません。" Wrap="true">
+                <MatRadioButton Value="@("1")" Disabled="true" TValue="string">CSVファイルから　</MatRadioButton>
+            </MatTooltip>
+        </MatRadioGroup>
+
+        <p>
+            <h4>kobolファイルを取り込む</h4>
+            <MatFileUpload OnChange="@FilesRegisterField" AllowMultiple="false" Label="ファイルをドラッグ&ドロップしてください" /><br>
+
+            <h4>読み取り結果</h4>
+            <textarea style="width: 100%; max-height: 300px; height: 300px;">@textContent</textarea>
+        </p>
+
+
+    </MatTab>
+</MatTabGroup>
+<MatSnackbar @bind-IsOpen="@snackBarIsOpen" Stacked="true">
+    <MatSnackbarContent>この機能はまだ有効ではありません。</MatSnackbarContent>
+</MatSnackbar>
+@code
+{
+    string? projectValue;
+    string? jobValue;
+    string? fmtValue;
+    private List<ProjectMst>? projectMst;
+    private List<JobMst>? jobMst;
+    private List<string>? projectList = new List<string>() { "loading..." };
+    private List<string>? jobList = new List<string>() { "loading..." };
+    private List<string> fmtList = new List<string>();
+
+    string? newProjectDescValue;
+    string? newCommentValue;
+
+    string? newJobDescValue;
+
+    bool projectDialogIsOpen = false;
+    bool jobDialogIsOpen = false;
+    bool snackBarIsOpen = false;
+
+    protected string? fileTypeValue = "0";
+    string? textContent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        for (int i = 1; i <= 99; i++)
+        {
+            fmtList.Add(i.ToString().PadLeft(2, '0'));
+        }
+        fmtList.Add("00");
+
+        projectMst = await client.GetFromJsonAsync<List<ProjectMst>>("api/ProjectMst");
+        projectList.Clear();
+        foreach (var pm in projectMst)
+        {
+            projectList.Add(pm.ProjectDesc);
+        }
+
+        jobMst = await client.GetFromJsonAsync<List<JobMst>>("api/JobMst");
+    }
+
+    public int tabIndex = 0;
+
+    DateTime? myDateTimeNullValue;
+
+    //ボタンクリックイベント タブ変更 未使用
+    void ChangeTab(MouseEventArgs e)
+    {
+        tabIndex = tabIndex < 2 ? tabIndex + 1 : 0;
+    }
+
+    async Task ClickProjectDelete(string projectDesc)
+    {
+        //ステータスを9に変更
+        snackBarIsOpen = true;
+        this.StateHasChanged();
+    }
+
+    async Task ClickJobDelete(string projectDesc, string jobDesc)
+    {
+        //ステータスを9に変更
+        snackBarIsOpen = true;
+        this.StateHasChanged();
+    }
+
+    //プロジェクトをDB登録
+    async Task ClickRegisterProject(string projectDesc, string comment)
+    {
+        projectDialogIsOpen = false;
+        HttpResponseMessage exitCode;
+        ProjectMst pm = new ProjectMst(projectDesc, comment, 0, DateTime.Now, "SYSTEM");
+        string jsonString = JsonSerializer.Serialize(pm);
+        var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://192.168.215.28:8080/net6" + "/api/register/project");
+        {
+            request.Content = content;
+            exitCode = await client.SendAsync(request);
+        }
+        newProjectDescValue = "";
+        newCommentValue = "";
+        await OnInitializedAsync();
+        StateHasChanged();
+    }
+
+    //JOBをDB登録
+    async Task ClickRegisterJob(string projectDesc, string jobDesc)
+    {
+        jobDialogIsOpen = false;
+        HttpResponseMessage exitCode;
+        JobMst jm = new JobMst(projectDesc, jobDesc, 0, DateTime.Now, "SYSTEM");
+        string jsonString = JsonSerializer.Serialize(jm);
+        var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://192.168.215.28:8080/net6" + "/api/register/job");
+        {
+            request.Content = content;
+            exitCode = await client.SendAsync(request);
+        }
+        newJobDescValue = "";
+        await OnInitializedAsync();
+        StateHasChanged();
+    }
+
+    async Task ChangeReloadJob()
+    {
+        jobMst = await client.GetFromJsonAsync<List<JobMst>>("api/JobMst");
+
+    }
+
+    void OpenProjectDialog() { projectDialogIsOpen = true; }
+    void OpenJobDialog() { jobDialogIsOpen = true; }
+
+    //FieldをDB登録
+    async Task FilesRegisterField(IMatFileUploadEntry[] files)
+    {
+        try
+        {
+            foreach (var file in files)
+            {
+                if (file == null)
+                {
+                    continue;
+                }
+                using (var stream = new MemoryStream())
+                {
+                    HttpResponseMessage exitCode;
+                    var sw = Stopwatch.StartNew();
+                    await file.WriteToStreamAsync(stream);
+                    sw.Stop();
+                    if (stream.Length > 1024 * 1024)
+                    {
+                        textContent += $"Name:\t{file.Name}\r\n";
+                        textContent += $"LastModified:\t{file.LastModified}\r\n";
+                        textContent += $"Size:\t{file.Size}\r\n";
+                        textContent += $"Time:\t{sw.Elapsed}\r\n";
+                        textContent += $"Speed:\t{(stream.Length / sw.Elapsed.TotalSeconds):N0}  b/s\r\n";
+                        textContent += "サイズ超過のためアップロードされませんでした。";
+                        continue;
+                    }
+                    else
+                    {
+                        stream.Seek(0, SeekOrigin.Begin);
+                        var fileContent = new StreamContent(stream);
+                        using var content = new MultipartFormDataContent();
+                        string targetFileName = projectValue + "_" + jobValue + "_" + fmtValue + "_" + file.Name;
+
+                        content.Add(fileContent, "file", targetFileName);
+                        var request = new HttpRequestMessage(HttpMethod.Post, "http://192.168.215.28:8080/net6" + "/api/register/field");
+                        {
+                            request.Content = content;
+                            exitCode = await client.SendAsync(request);
+                        }
+
+                        using (var reader = new StreamReader(stream))
+                        {
+                            textContent += $"Name:\t{file.Name}\r\n";
+                            textContent += $"LastModified:\t{file.LastModified}\r\n";
+                            textContent += $"Size:\t{file.Size}\r\n";
+                            textContent += $"Time:\t{sw.Elapsed}\r\n";
+                            textContent += $"Speed:\t{(stream.Length / sw.Elapsed.TotalSeconds):N0}  b/s\r\n";
+
+                            textContent += exitCode;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            textContent = $"Error:\r\n{e.Message}\r\n{e.StackTrace}";
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+
+}
+

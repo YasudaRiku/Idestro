@@ -1,0 +1,73 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navi
+
+<div class="page">
+    <div>
+        <MatAppBarContainer>
+            <MatThemeProvider Theme="@theme1">
+
+                <MatAppBar Fixed="true">
+                    <MatAppBarRow>
+                        <MatAppBarSection>
+                            <MatIconButton Icon="menu" OnClick="@((e) => ButtonClicked())"></MatIconButton>
+                            <MatAppBarTitle>KOBOL(OPEN IDES) ⇒ LIBRARY(ENTREX NESTA)</MatAppBarTitle>
+                        </MatAppBarSection>
+                        <MatAppBarSection Align="@MatAppBarSectionAlign.End">
+                            <MatTooltip Tooltip="操作説明" Wrap="true">
+                                <MatIconButton Icon="help" OnClick="HelpButtonClick"></MatIconButton>
+                            </MatTooltip>
+                            <MatTooltip Tooltip="現在選択できません。" Wrap="true">
+                                <MatIconButton Icon="comment"></MatIconButton>
+                                <MatIconButton Icon="favorite"></MatIconButton>
+                            </MatTooltip>
+                        </MatAppBarSection>
+                    </MatAppBarRow>
+                </MatAppBar>
+            </MatThemeProvider>
+            <MatThemeProvider Theme="@theme2">
+                <MatAppBarContent>
+                    <MatDrawerContainer Style="width: 100vw; height: 85vh;">
+                        <MatDrawer @bind-Opened="@Opened">
+                            <NavMenu />
+                        </MatDrawer>
+                        <MatDrawerContent>
+                            <main>
+                                <article class="content px-4">
+                                    @Body
+                                </article>
+                            </main>
+                        </MatDrawerContent>
+                    </MatDrawerContainer>
+                </MatAppBarContent>
+            </MatThemeProvider>
+        </MatAppBarContainer>
+    </div>
+
+</div>
+
+@code {
+    MatTheme theme1 = new MatTheme()
+        {
+            Primary = MatThemeColors.Orange._500.Value,
+            Secondary = MatThemeColors.BlueGrey._500.Value
+        };
+
+    MatTheme theme2 = new MatTheme()
+        {
+            Primary = MatThemeColors.DeepPurple._500.Value,
+            Secondary = MatThemeColors.Orange._500.Value,
+        };
+
+    bool Opened = true;
+
+    void ButtonClicked()
+    {
+        Opened = !Opened;
+    }
+
+    protected void HelpButtonClick()
+    {
+        // Nextページへ遷移
+        Navi.NavigateTo("./help");
+    }
+}
